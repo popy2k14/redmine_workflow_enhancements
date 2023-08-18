@@ -27,7 +27,7 @@ module ActionView
     #
     # This renders the "super" template, i.e. the one hidden by the plugin
     #
-    def render_with_workflow_enhancements(*args, &block)
+    def render(*args, &block)
       if args.first == :super
         last_view = view_stack.last || {:view => instance_variable_get(:@virtual_path).split('/').last}
         options = args[1] || {}
@@ -39,7 +39,7 @@ module ActionView
         end
         options[:template] = last_view[:templates].shift
         view_stack << last_view
-        result = render_without_workflow_enhancements options
+        result = super options
         view_stack.pop
         result
       else
@@ -50,13 +50,11 @@ module ActionView
           current_view[:locals] = options[:locals] if !current_view.nil? && options[:locals]
           view_stack << current_view if current_view.present?
         end
-        result = render_without_workflow_enhancements(*args, &block)
+        result = super(*args, &block)
         view_stack.pop if current_view.present?
         result
       end
     end
-
-    alias_method_chain :render, :workflow_enhancements
 
     def view_stack
       @_view_stack ||= []

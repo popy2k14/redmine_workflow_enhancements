@@ -4,16 +4,18 @@
   <%= stylesheet_link_tag "workflow_enhancements.css", :plugin => :redmine_workflow_enhancements %>
 <% end -%>
 
-<div class="splitcontentright">
-  <fieldset class="box" id="predef-statuses">
-    <legend><%= l(:label_issue_status_plural) %></legend>
+<fieldset class="box" id="predef-statuses" style="display: none;">
+  <legend><%= toggle_checkboxes_link("#predef-statuses input[type=checkbox]:visible") %><%= l(:label_issue_status_plural) %></legend>
 
-    <% IssueStatus.order(:name).each do |status| %>
-      <label>
-        <%= check_box_tag "tracker[predef_issue_status_ids][]", status.id,
-            @tracker.predef_issue_statuses.include?(status), :id => nil %>
-        <%= status.name %>
-      </label>
-    <% end %>
-  </fieldset>
-</div>
+  <% IssueStatus.order(:position).each do |status| %>
+    <label>
+      <%= check_box_tag "tracker[predef_issue_status_ids][]", status.id,
+          @tracker.predef_issue_statuses.include?(status), :id => nil %>
+      <%= status.name %>
+    </label><br>
+  <% end %>
+</fieldset>
+
+<%= javascript_tag do %>
+  $("#predef-statuses").appendTo(".splitcontentright").show();
+<% end %>

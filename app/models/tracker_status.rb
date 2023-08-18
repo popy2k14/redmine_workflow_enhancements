@@ -1,7 +1,10 @@
 class TrackerStatus < ActiveRecord::Base
   unloadable
 
-  attr_accessible :tracker_id, :issue_status_id
+  private
+  def tracker_params
+    params.require(:text).permit(:tracker_id, :issue_status_id)
+  end
 
   belongs_to :tracker
   belongs_to :predef_issue_status, :class_name => 'IssueStatus', :foreign_key => 'issue_status_id'

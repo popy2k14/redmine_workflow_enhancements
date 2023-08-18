@@ -1,0 +1,40 @@
+<% if User.current.allowed_to?(:workflow_graph_view, @project) %>
+  <% content_for :header_tags do -%>
+    <%= stylesheet_link_tag "workflow_enhancements.css", :plugin => :redmine_workflow_enhancements %>
+  <% end -%>
+
+  <script type="text/javascript">
+  $("body").prepend('<div id="workflow-display" style="position:fixed;top:-1000px;"></div>');
+
+  <% @trackers.each_with_index do |tracker,i| %>
+  $(".list.issue-report > tbody > tr")
+    .eq(<%= i %>)
+    .children()
+    .first()
+    .append('<span class="icon icon-help" onclick="show_workflow(\'<%= workflow_show_graph_path(@project.id, tracker.id, 0) %>\')" ' +
+            'style="padding: 10px; margin-left: 4px; cursor: pointer; float: right;"></span>');
+  <% end %>
+
+  function show_workflow(url) {
+    $.ajax({
+      async: true,
+      url: url,
+      success: function(data) {
+        $("#workflow-dialog").dialog('close');
+        $("#workflow-display").html(data);
+        $("#workflow-dialog").dialog({
+          title: $("#workflow-dialog h3").text(),
+          resizable: false,
+          width: 'auto',
+          height: 'auto',
+          close: function(event, ui) {
+            $(this).dialog('destroy').remove();
+          }
+        });
+      }
+    });
+
+    return false;
+  };
+  </script>
+<% end %>

@@ -3,6 +3,8 @@
  roles = Array(roles)
  minimal = false if local_assigns[:minimal].nil?
  issue ||= nil
+ project_roles = @project.users_by_role.map{ |x| x[0] }.sort_by(&:position) unless @project.nil?
+ project_role_ids = project_roles.map(&:id) unless @project.nil?
 %>
 <% if trackers.length == 1 %>
   <%= javascript_include_tag "d3.v3.min.js", :plugin => :redmine_workflow_enhancements %>
@@ -15,23 +17,45 @@
         <a class="icon icon-save" id="graphSavePng"><%= l(:button_save) %></a>
       </div>
     <% end %>
-    <h4 style="<%= minimal ? "display:none;" : '' %>">
+    <h3 style="<%= minimal ? "display:none;" : '' %>">
       <%= l(:label_workflow) %>: <%= trackers.first.name %>
-      <% unless roles.empty? %>
-        - <%= roles.length == 1 ? l(:label_role) : l(:label_role_plural) %>:
-        <%= roles.map(&:name).join(', ') %>
-      <% end %>
-    </h4>
+      <% if @project.nil?
+           user_roles = roles.map(&:id)
+           project_roles = roles
+         else
+           user_roles = project_role_ids & WorkflowTransition.select{|w| w[:tracker_id] == trackers.first.id && w[:old_status_id] != 0}.map(&:role_id)
+         end %>
+    </h3>
+    <% unless user_roles.empty? %>
+      <h4>
+        <%= user_roles.length == 1 ? l(:label_role) : l(:label_role_plural) %>:
+        <% user_roles.each do |r| %>
+          <span class='role<%= r %>' onmouseover="aglow('.role<%= r %>')" onmouseout="uglow('.role<%= r %>')">
+            <%= project_roles.select{|s| s[:id] == r}[0] %><%= r == user_roles.last ? "" : "," %>
+          </span>
+        <% end %>
+      </h4>
+    <% end %>
     <div class="workflowGraph">
       <svg id="workflow-vis">
-        <g transform="translate(2,2)"/>
+        <filter id="glow" filterUnits="userSpaceOnUse">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="0"></feGaussianBlur>
+          <feOffset dx="0" dy="0" result="offsetblur"></feOffset>
+          <feFlood flood-color="rgb(206, 223, 14)"></feFlood>
+          <feComposite in2="offsetblur" operator="in"></feComposite>
+          <feMerge>
+            <feMergeNode in="SourceGraphic"></feMergeNode>
+            <feMergeNode></feMergeNode>
+          </feMerge>
+        </filter>
+        <g></g>
       </svg>
     </div>
   </div>
 
   <script type="text/javascript">
   $(function() {
-    var json = <%= WorkflowEnhancements::Graph.load_data(roles, trackers, issue).to_json.html_safe %>;
+    var json = <%= WorkflowEnhancements::Graph.load_data(roles, trackers, issue, project_role_ids, @project && @project.workspace_id ? @project.workspace_id : params[:workspace_id]).to_json.html_safe %>;
 
     var renderer = new dagreD3.Renderer();
     var oldDrawNodes = renderer.drawNodes();
@@ -64,33 +88,32 @@
 
     var cw = $('div#content').width();
     var dw = $('.workflowGraph').width();
+    var dh = $(window).height();
+    var aw = $('.workflowGraph').parent().hasClass("box");
     var t = cw >= 900 ? 20 : 5;
-    var gw = layout.graph().width + 2*t
-    var gh = layout.graph().height + 2*t
-    var w = Math.min(cw - 20, gw);
-    if (dw < cw && dw > gw) {
-      w = dw;
+    var gw = layout.graph().width;
+    var gh = layout.graph().height;
+    var w = aw ? dw : Math.min(cw - 2 * t, gw + 2 * t);
+    var h = Math.min($(window).height() - 2 * t, gh + 2 * t);
+    var s = Math.min((w - 2 * t) / gw, (h - 2 * t) / gh);
+    if (! aw) {
+      w  = gw * s + 2 * t;
     }
-    var h = Math.min($(window).height(), gh);
-    var sw = w / gw;
-    var sh = h / gh;
-    var s = 1;
-    if (sw < 1 || sh < 1) {
-      if (sw < sh) {
-        s = sw;
-        h = w * gh / gw;
-      } else {
-        s = sh;
-        w = h * gw / gh;
-      }
+    h = gh * s + 2 * t;
+    if (h < dh * .4) {
+      h = dh * .4;
     }
-
-    $('#workflow-vis').attr('width', w).attr('height', h)
-    var transform = 'translate(' + t + ',' + t + ')';
+    $('#workflow-vis').attr('width', w).attr('height', h);
+    w = $('.workflowGraph').width();
+    $('#workflow-vis').attr('width', w);
+    var tw = (w - gw * s) / 2;
+    t = (h - gh * s) / 2;
+    var transform = 'translate(' + tw + ',' + t + ')';
     if (s < 1) {
       transform += 'scale(' + s + ')';
     }
     d3.select("#workflow-vis g").attr("transform", transform);
+    $('#glow').attr({"height":gh, "width":gw, "x":0, "y":0});
 
     <% unless minimal %>
       // save as PNG only works in Firefox and Chrome
@@ -102,6 +125,14 @@
       }
     <% end %>
   });
+  function aglow(what) {
+    $(what).css("filter","url(#glow)");
+    $(what).css("color","rgb(190, 210, 30);");
+  }
+  function uglow(what) {
+    $(what).css("filter","");
+    $(what).css("color","");
+  }
   </script>
 <% end %>
 
