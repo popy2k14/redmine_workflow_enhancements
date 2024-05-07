@@ -3,7 +3,7 @@
  roles = Array(roles)
  minimal = false if local_assigns[:minimal].nil?
  issue ||= nil
- project_roles = @project.users_by_role.map{ |x| x[0] }.sort_by(&:position) unless @project.nil?
+ project_roles = @project.principals_by_role.map{ |x| x[0] }.sort_by(&:position) unless @project.nil?
  project_role_ids = project_roles.map(&:id) unless @project.nil?
 %>
 <% if trackers.length == 1 %>
@@ -14,7 +14,6 @@
   <div class="<%= minimal ? "" : "box" %>">
     <% unless minimal %>
       <div class="contextual" style="display:none;" id="graphContextual">
-        <a class="icon icon-save" id="graphSavePng"><%= l(:button_save) %></a>
       </div>
     <% end %>
     <h3 style="<%= minimal ? "display:none;" : '' %>">
@@ -55,7 +54,7 @@
 
   <script type="text/javascript">
   $(function() {
-    var json = <%= WorkflowEnhancements::Graph.load_data(roles, trackers, issue, project_role_ids, @project && @project.workspace_id ? @project.workspace_id : params[:workspace_id]).to_json.html_safe %>;
+    var json = <%= WorkflowEnhancements::Graph.load_data(roles, trackers, issue, project_role_ids, params[:workspace_id]).to_json.html_safe %>;
 
     var renderer = new dagreD3.Renderer();
     var oldDrawNodes = renderer.drawNodes();
